@@ -65,10 +65,97 @@ This is a simple RESTful API built with Go for managing user wallets and transac
     This command will download all the necessary Go dependencies, including `gorm.io/gorm`, `gorm.io/driver/postgres`, `github.com/joho/godotenv`, and `github.com/gorilla/mux`.
 
 5.  **Run the Application:**
+
     ```bash
     go run main.go
     ```
+
     You should see the message `Server running on http://localhost:8080` in your terminal, indicating that the API server has started successfully.
+
+6.  **Build the Docker Image:**
+
+    - Navigate to your project directory in the terminal and run:
+      ```bash
+      docker build -t wallet_api .
+      ```
+      This command builds a Docker image named `wallet_api` using the `Dockerfile` in the current directory.
+
+7.  **Run the Docker Container:**
+
+    - To run the Docker container and map port 8080 on your host to port 8080 inside the container, use the following command. **If your PostgreSQL database is running on your host machine**, you might need to pass your host's IP address as an environment variable (see the "Running with Docker" section below for details).
+
+      ```bash
+      docker run -p 8080:8080 --name wallet-api-container wallet_api
+      ```
+
+## Docker Information
+
+- **Docker Image:** `wallet_api`
+
+  - This image contains your compiled Go application and the necessary runtime environment. It's built using the instructions in the `Dockerfile`, which typically starts from a Go base image and includes steps to copy your code, download dependencies, and build the executable.
+
+- **Docker Container:** `wallet-api-container` (you can choose a different name)
+  - This is a running instance of the `wallet_api` image. The `-p 8080:8080` flag maps port 8080 on your host machine to port 8080 inside the container, where your Go application's HTTP server is listening.
+
+## Running with Docker and Connecting to PostgreSQL
+
+There are a couple of common ways to run this application with Docker and connect to PostgreSQL:
+
+**1. PostgreSQL Running on the Host Machine:**
+
+If your PostgreSQL database is running directly on your local machine, the containerized application might have trouble connecting to `localhost` (which refers to the container itself). You might need to:
+
+- **Find your host machine's IP address** (using `ipconfig` on Windows or `ip addr show` on Linux/macOS).
+- **Run the Docker container, explicitly setting the `DB_HOST` environment variable:**
+  ```bash
+  docker run -p 8080:8080 --name wallet-api-container \
+     -e DB_HOST=<YOUR_HOST_IP> \
+     -e DB_PORT=5432 \
+     -e DB_USER=wallet_user \
+     -e DB_PASSWORD=wallet_password \
+     -e DB_NAME=wallet_db \
+     wallet_api
+  ```
+  _(Replace `<YOUR_HOST_IP>` with your actual host IP address.)_
+- **Ensure PostgreSQL is configured to accept remote connections** from your host's IP (check `postgresql.conf` and `pg_hba.conf`).
+
+** PostgreSQL Running in a Docker Container (Recommended using Docker Compose):**
+
+For a more isolated and manageable setup, it's recommended to run PostgreSQL in its own Docker container and use Docker Compose to orchestrate both services.
+
+- **Create a `docker-compose.yml` file:**
+  ```yaml
+  version: "3.8"
+  services:
+    db:
+      image: postgres:latest
+      environment:
+        POSTGRES_USER: wallet_user
+        POSTGRES_PASSWORD: wallet_password
+        POSTGRES_DB: wallet_db
+      ports:
+        - "5432:5432"
+      volumes:
+        - db_data:/var/lib/postgresql/data/
+    app:
+      image: wallet_api
+      ports:
+        - "8080:8080"
+      environment:
+        DB_HOST: db # Use the service name as the hostname
+        DB_PORT: 5432
+        DB_USER: wallet_user
+        DB_PASSWORD: wallet_password
+        DB_NAME: wallet_db
+      depends_on:
+        - db
+  volumes:
+    db_data:
+  ```
+- **Run with Docker Compose:**
+  ```bash
+  docker-compose up -d
+  ```
 
 ## Dependencies Used
 
@@ -85,11 +172,35 @@ You can use Postman to send requests to the API endpoints. Ensure your Go server
 
 - **Create User (POST `http://localhost:8080/users`):**
 
-  ```json
+  ````json
   {
     "name": "Devansh",
-    "email": "Devansh.apply@gmail.com"
+
+  ```json
+  {
+    "user_id": 1,
+    "initial_balance": 10000.0
   }
+  ````
+
+  Replace `1` with the actual user ID you want to create a wallet for.
+
+- **Create Wallet (POST `http://localhost:8080/wallets`):** "email": "Devansh.apply@gmail.com"
+  }
+
+  ````
+
+  ```json
+  {
+    "user_id": 1, // replace with actual user ID
+    "initial_balance": 10000.0
+  }
+  ````
+
+- **Create Wallet (POST `http://localhost:8080/wallets`):**
+
+  ```
+
   ```
 
 - **Create Wallet (POST `http://localhost:8080/wallets`):**
